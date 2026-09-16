@@ -14,21 +14,6 @@ class PineappleGossipBot(Node):
         timer_period = 0.5
         self.timer = self.create_timer(timer_period, self.timer_callbackcolcon
  
-build
- 
---packages-select
- 
-pa_warehouse_status
-
-source
- 
-install/local_setup.bash
-
-ros2
- 
-run
- 
-pa_warehouse_status
  
 pineapple_gossip_bot)
         self.i = 0
@@ -49,3 +34,5 @@ def main(args=None):
 
     if __name__ == '__main__':
         main()
+
+        

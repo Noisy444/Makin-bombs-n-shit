@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'pineapple_gossip_bot = pa_warehouse_status.pineapple_gossip_bot:main'
+            'plc_hmi_listener = pa_warehouse_status.plc_hmi_listener:main'
         ],
     },
 )
