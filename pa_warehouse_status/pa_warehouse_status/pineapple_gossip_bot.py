@@ -12,10 +12,7 @@ class PineappleGossipBot(Node):
 
         # Timer to publish every 0.5 seconds
         timer_period = 0.5
-        self.timer = self.create_timer(timer_period, self.timer_callbackcolcon
- 
- 
-pineapple_gossip_bot)
+        self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
 
     def timer_callback(self):
