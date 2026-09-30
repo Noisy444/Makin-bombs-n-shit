@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'pa_warehouse_status'
+package_name = 'pa_warehouse'
 
 setup(
     name=package_name,
@@ -14,7 +14,7 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='root',
-    maintainer_email='u3322189@uni.canberra.edu.au',
+    maintainer_email='root@todo.todo',
     description='TODO: Package description',
     license='Apache-2.0',
     extras_require={
@@ -23,9 +23,9 @@ setup(
         ],
     },
     entry_points={
-        'console_scripts': [
-            'pineapple_gossip_bot = pa_warehouse_status.pineapple_gossip_bot:main',
-            'plc_hmi_listener = pa_warehouse_status.plc_hmi_listener:main'
-        ],
+       'console_scripts': [
+         'pineapple_gossip_bot = pa_warehouse.pineapple_gossip_bot:main',
+         'plc_hmi_listener = pa_warehouse.plc_hmi_listener:main',
+     ],
     },
 )
