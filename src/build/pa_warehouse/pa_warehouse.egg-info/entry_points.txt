@@ -1,3 +1,0 @@
-[console_scripts]
-pineapple_gossip_bot = pa_warehouse.pineapple_gossip_bot:main
-plc_hmi_listener = pa_warehouse.plc_hmi_listener:main
