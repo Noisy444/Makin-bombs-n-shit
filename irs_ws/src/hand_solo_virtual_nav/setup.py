@@ -1,5 +1,6 @@
 from setuptools import find_packages, setup
-
+import os
+from glob import glob
 package_name = 'hand_solo_virtual_nav'
 
 setup(
