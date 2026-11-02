@@ -11,7 +11,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'launch'), glob('launch/*')),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
         ('share/' + package_name + '/config', glob('config/*.yaml') + glob('map/*.yaml')),
         ('share/' + package_name + '/map', glob('map/*')),
         ('share/' + package_name + '/rviz', glob('rviz/*.rviz')),
