@@ -1,0 +1,37 @@
+[2.101s] Invoking command in '/workspace/irs_ws/src/Makin-bombs-n-shit/irs_ws/src/hand_solo_arm': PYTHONPATH=/workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/hand_solo_arm build --build-base /workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/build install --record /workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/install.log --install-scripts $base/lib/hand_solo_arm --single-version-externally-managed install_data
+[2.849s] running egg_info
+[2.849s] creating ../../../build/hand_solo_arm/hand_solo_arm.egg-info
+[2.904s] writing ../../../build/hand_solo_arm/hand_solo_arm.egg-info/PKG-INFO
+[2.905s] writing dependency_links to ../../../build/hand_solo_arm/hand_solo_arm.egg-info/dependency_links.txt
+[2.905s] writing entry points to ../../../build/hand_solo_arm/hand_solo_arm.egg-info/entry_points.txt
+[2.905s] writing requirements to ../../../build/hand_solo_arm/hand_solo_arm.egg-info/requires.txt
+[2.906s] writing top-level names to ../../../build/hand_solo_arm/hand_solo_arm.egg-info/top_level.txt
+[2.906s] writing manifest file '../../../build/hand_solo_arm/hand_solo_arm.egg-info/SOURCES.txt'
+[3.018s] reading manifest file '../../../build/hand_solo_arm/hand_solo_arm.egg-info/SOURCES.txt'
+[3.020s] writing manifest file '../../../build/hand_solo_arm/hand_solo_arm.egg-info/SOURCES.txt'
+[3.021s] running build
+[3.021s] running build_py
+[3.021s] creating /workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/build
+[3.022s] creating /workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/build/lib
+[3.022s] creating /workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/build/lib/hand_solo_arm
+[3.023s] copying hand_solo_arm/__init__.py -> /workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/build/lib/hand_solo_arm
+[3.023s] copying hand_solo_arm/hs_pick_place.py -> /workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/build/lib/hand_solo_arm
+[3.023s] running install
+[3.040s] running install_lib
+[3.096s] creating /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/lib/python3.12/site-packages/hand_solo_arm
+[3.096s] copying /workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/build/lib/hand_solo_arm/__init__.py -> /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/lib/python3.12/site-packages/hand_solo_arm
+[3.097s] copying /workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/build/lib/hand_solo_arm/hs_pick_place.py -> /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/lib/python3.12/site-packages/hand_solo_arm
+[3.098s] byte-compiling /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/lib/python3.12/site-packages/hand_solo_arm/__init__.py to __init__.cpython-312.pyc
+[3.099s] byte-compiling /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/lib/python3.12/site-packages/hand_solo_arm/hs_pick_place.py to hs_pick_place.cpython-312.pyc
+[3.102s] running install_data
+[3.102s] creating /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/share/ament_index
+[3.103s] creating /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/share/ament_index/resource_index
+[3.103s] creating /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/share/ament_index/resource_index/packages
+[3.103s] copying resource/hand_solo_arm -> /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/share/ament_index/resource_index/packages
+[3.103s] copying package.xml -> /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/share/hand_solo_arm
+[3.104s] running install_egg_info
+[3.164s] Copying ../../../build/hand_solo_arm/hand_solo_arm.egg-info to /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/lib/python3.12/site-packages/hand_solo_arm-0.0.0-py3.12.egg-info
+[3.168s] running install_scripts
+[3.570s] Installing hs_pick_place script to /workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/lib/hand_solo_arm
+[3.571s] writing list of installed files to '/workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/install.log'
+[3.677s] Invoked command in '/workspace/irs_ws/src/Makin-bombs-n-shit/irs_ws/src/hand_solo_arm' returned '0': PYTHONPATH=/workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/workspace/irs_ws/src/Makin-bombs-n-shit/install/hand_solo_arm/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/hand_solo_arm build --build-base /workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/build install --record /workspace/irs_ws/src/Makin-bombs-n-shit/build/hand_solo_arm/install.log --install-scripts $base/lib/hand_solo_arm --single-version-externally-managed install_data

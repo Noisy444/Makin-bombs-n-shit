@@ -2,6 +2,7 @@
 import math
 import time
 import subprocess
+
 import rclpy
 from rclpy.action import ActionClient
 from action_msgs.msg import GoalStatus
@@ -87,10 +88,15 @@ def main():
     '''
     
     '''
+    # Run the arm movement sequence
+    node.get_logger().info('Starting arm movement sequence...')
+
     subprocess.run(
         ['ros2', 'run', 'hand_solo_arm', 'hs_pick_place'],
         check=True
     )
+
+node.get_logger().info('Arm movement sequence completed!')
     time.sleep(5)
 
     # 5. Go to other waypoints and delays if you want
