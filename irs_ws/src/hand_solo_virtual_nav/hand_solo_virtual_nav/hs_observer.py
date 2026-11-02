@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Hand Solo supervisor: PLC location A -> waypoint 1 -> arm -> waypoint 2."""
+"""PLC -> Nav2 waypoint 1 -> existing MoveIt arm sequence.
+
+This is one ROS 2 observer node. The arm runs as a separate ROS 2 process
+only after Nav2 reports STATUS_SUCCEEDED.
+"""
 
 import json
 import math
@@ -7,17 +11,17 @@ import subprocess
 import time
 
 import rclpy
+from rclpy.action import ActionClient
+from rclpy.node import Node
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped
 from nav2_msgs.action import NavigateToPose
-from rclpy.action import ActionClient
-from rclpy.node import Node
 from std_msgs.msg import String
 
 
-def get_nested(data, field_path):
-    """Read nested PLC JSON fields such as box.location."""
-    for key in field_path.split('.'):
+def get_nested(data, path):
+    """Read fields such as 'box.location' from the PLC's JSON message."""
+    for key in path.split('.'):
         if not isinstance(data, dict) or key not in data:
             return None
         data = data[key]
@@ -28,35 +32,23 @@ class HSObserver(Node):
     def __init__(self):
         super().__init__('hs_observer')
 
+        # These match the fields currently read by plc_hmi_listener.py.
+        # Change trigger_value to the ACTUAL value emitted by your PLC.
         self.declare_parameter('plc_topic', '/hmi/unified_status')
         self.declare_parameter('trigger_field', 'box.location')
         self.declare_parameter('trigger_value', 'A')
-        self.declare_parameter('log_plc_messages', True)
 
-        # Coordinates taken from your original hs_waypoint_follower.py.
+        # The existing hs_waypoint_follower.py calls (0, 0, 0) "wp1".
         self.declare_parameter('waypoint_x', 0.0)
         self.declare_parameter('waypoint_y', 0.0)
-        self.declare_parameter('waypoint_yaw', 0.0)
-        self.declare_parameter('waypoint2_x', 31.0)
-        self.declare_parameter('waypoint2_y', -4.0)
-        self.declare_parameter('waypoint2_yaw', 0.0)
+        self.declare_parameter('waypoint_yaw', 0.0)  # radians
 
-        self.plc_topic = str(self.get_parameter('plc_topic').value)
-        self.trigger_field = str(self.get_parameter('trigger_field').value)
-        self.trigger_value = self.normalise(self.get_parameter('trigger_value').value)
-        self.log_plc_messages = bool(self.get_parameter('log_plc_messages').value)
-        self.waypoints = {
-            1: (
-                float(self.get_parameter('waypoint_x').value),
-                float(self.get_parameter('waypoint_y').value),
-                float(self.get_parameter('waypoint_yaw').value),
-            ),
-            2: (
-                float(self.get_parameter('waypoint2_x').value),
-                float(self.get_parameter('waypoint2_y').value),
-                float(self.get_parameter('waypoint2_yaw').value),
-            ),
-        }
+        self.plc_topic = self.get_parameter('plc_topic').value
+        self.trigger_field = self.get_parameter('trigger_field').value
+        self.trigger_value = str(self.get_parameter('trigger_value').value).strip().lower()
+        self.waypoint_x = float(self.get_parameter('waypoint_x').value)
+        self.waypoint_y = float(self.get_parameter('waypoint_y').value)
+        self.waypoint_yaw = float(self.get_parameter('waypoint_yaw').value)
 
         self.state = 'IDLE'
         self.trigger_latched = False
@@ -66,191 +58,147 @@ class HSObserver(Node):
         self.last_feedback_log = 0.0
 
         self.nav_client = ActionClient(self, NavigateToPose, '/navigate_to_pose')
-        self.plc_subscription = self.create_subscription(
+        self.plc_subscriber = self.create_subscription(
             String, self.plc_topic, self.on_plc_message, 10
         )
         self.timer = self.create_timer(0.5, self.on_timer)
 
         self.get_logger().info(
-            f'Observer ready. Listening to {self.plc_topic}. '
-            f'Trigger: {self.trigger_field} = {self.trigger_value!r}'
+            f'Observer ready. Listening on {self.plc_topic}; '
+            f'waiting for {self.trigger_field} == {self.trigger_value!r}.'
         )
-        self.get_logger().info(f'Waypoint 1: {self.waypoints[1]}')
-        self.get_logger().info(f'Waypoint 2: {self.waypoints[2]}')
-
-    @staticmethod
-    def normalise(value):
-        # The PLC sends ': A', which needs to match the configured 'A'.
-        return str(value).strip().lstrip(':').strip().lower()
+        self.get_logger().info(
+            f'Waypoint 1: x={self.waypoint_x}, y={self.waypoint_y}, '
+            f'yaw={self.waypoint_yaw} rad.'
+        )
 
     def on_plc_message(self, msg):
-        if self.log_plc_messages:
-            self.get_logger().info(f'[PLC RX] RAW: {msg.data!r}')
-
         try:
             data = json.loads(msg.data)
-        except json.JSONDecodeError as exc:
-            self.get_logger().warning(f'[PLC RX] Invalid JSON: {exc}')
+        except json.JSONDecodeError:
+            self.get_logger().warning('PLC message is not valid JSON; ignoring it.')
             return
 
-        raw_location = get_nested(data, self.trigger_field)
-        if raw_location is None:
-            if self.log_plc_messages:
-                self.get_logger().warning(
-                    f'[PLC RX] Field {self.trigger_field!r} not present'
-                )
+        value = get_nested(data, self.trigger_field)
+        if value is None:
+            # Another PLC field may exist, but this observer must not guess it.
             return
 
-        location = self.normalise(raw_location)
-        active = location == self.trigger_value
-        if self.log_plc_messages:
-            self.get_logger().info(
-                f'[PLC RX] location={location!r}, match={active}, '
-                f'state={self.state}, latched={self.trigger_latched}'
-            )
-
+        active = str(value).strip().lower() == self.trigger_value
         if not active:
-            # Only permit another run after the PLC location stops being A.
+            # Require PLC to return to a different value before next cycle.
             self.trigger_latched = False
             return
 
         if self.trigger_latched:
-            return
+            return  # The PLC may publish the same status repeatedly.
 
         self.trigger_latched = True
         if self.state != 'IDLE':
             self.get_logger().warning(
-                f'PLC location A detected while {self.state}; ignoring new job.'
+                f'PLC trigger received while {self.state}; ignoring repeated job.'
             )
             return
 
-        self.get_logger().info('PLC trigger accepted. Starting waypoint 1 -> arm -> waypoint 2.')
-        self.state = 'WAITING_FOR_NAV2_1'
+        self.get_logger().info('PLC START detected. Requesting waypoint 1.')
+        self.state = 'WAITING_FOR_NAV2'
         self.last_wait_log = 0.0
 
     def on_timer(self):
-        if self.state in ('WAITING_FOR_NAV2_1', 'WAITING_FOR_NAV2_2'):
-            waypoint_number = 1 if self.state.endswith('_1') else 2
+        if self.state == 'WAITING_FOR_NAV2':
             if self.nav_client.server_is_ready():
-                self.send_navigation_goal(waypoint_number)
-            elif time.monotonic() - self.last_wait_log >= 5.0:
+                self.send_waypoint_1()
+            elif time.monotonic() - self.last_wait_log > 5.0:
                 self.get_logger().warning('Waiting for /navigate_to_pose action server...')
                 self.last_wait_log = time.monotonic()
 
-        elif self.state == 'ARM_RUNNING' and self.arm_process is not None:
+        if self.state == 'ARM_RUNNING' and self.arm_process is not None:
             exit_code = self.arm_process.poll()
-            if exit_code is None:
-                return
-
-            self.arm_process = None
-            if exit_code != 0:
-                self.get_logger().error(
-                    f'Arm program failed (exit code {exit_code}). '
-                    'Not navigating to waypoint 2.'
-                )
+            if exit_code is not None:
+                if exit_code == 0:
+                    self.get_logger().info('Arm program exited (code 0).')
+                else:
+                    self.get_logger().error(f'Arm program exited with code {exit_code}.')
+                self.arm_process = None
                 self.state = 'IDLE'
-                return
+                self.get_logger().info('Observer ready for another PLC trigger edge.')
 
-            self.get_logger().info('Arm program finished. Going to waypoint 2.')
-            self.state = 'WAITING_FOR_NAV2_2'
-            self.last_wait_log = 0.0
-
-    def send_navigation_goal(self, waypoint_number):
-        x, y, yaw = self.waypoints[waypoint_number]
+    def send_waypoint_1(self):
         pose = PoseStamped()
         pose.header.frame_id = 'map'
         pose.header.stamp = self.get_clock().now().to_msg()
-        pose.pose.position.x = x
-        pose.pose.position.y = y
-        pose.pose.orientation.z = math.sin(yaw / 2.0)
-        pose.pose.orientation.w = math.cos(yaw / 2.0)
+        pose.pose.position.x = self.waypoint_x
+        pose.pose.position.y = self.waypoint_y
+        half_yaw = self.waypoint_yaw / 2.0
+        pose.pose.orientation.z = math.sin(half_yaw)
+        pose.pose.orientation.w = math.cos(half_yaw)
 
         goal = NavigateToPose.Goal()
         goal.pose = pose
-        self.state = f'NAVIGATING_{waypoint_number}'
-        self.last_feedback_log = 0.0
-        self.get_logger().info(
-            f'Sending Waypoint {waypoint_number} navigation goal: '
-            f'x={x}, y={y}, yaw={yaw}'
-        )
 
-        future = self.nav_client.send_goal_async(
-            goal,
-            feedback_callback=lambda feedback, n=waypoint_number: self.on_nav_feedback(n, feedback),
-        )
-        future.add_done_callback(
-            lambda completed, n=waypoint_number: self.on_nav_goal_response(n, completed)
-        )
+        self.state = 'NAVIGATING'
+        self.get_logger().info('Sending navigation goal for waypoint 1...')
+        future = self.nav_client.send_goal_async(goal, feedback_callback=self.on_nav_feedback)
+        future.add_done_callback(self.on_nav_goal_response)
 
-    def on_nav_goal_response(self, waypoint_number, future):
+    def on_nav_goal_response(self, future):
         try:
             handle = future.result()
         except Exception as exc:
-            self.get_logger().error(f'Waypoint {waypoint_number}: goal failed to send: {exc}')
+            self.get_logger().error(f'Failed to send Nav2 goal: {exc}')
             self.state = 'IDLE'
             return
 
         if handle is None or not handle.accepted:
-            self.get_logger().error(f'Nav2 rejected Waypoint {waypoint_number}.')
+            self.get_logger().error('Nav2 rejected waypoint 1. Arm will NOT move.')
             self.state = 'IDLE'
             return
 
         self.nav_goal_handle = handle
-        self.get_logger().info(f'Nav2 accepted Waypoint {waypoint_number}.')
+        self.get_logger().info('Nav2 accepted waypoint 1.')
         result_future = handle.get_result_async()
-        result_future.add_done_callback(
-            lambda completed, n=waypoint_number: self.on_nav_result(n, completed)
-        )
+        result_future.add_done_callback(self.on_nav_result)
 
-    def on_nav_feedback(self, waypoint_number, feedback_msg):
+    def on_nav_feedback(self, feedback_msg):
         if time.monotonic() - self.last_feedback_log >= 2.0:
-            try:
-                remaining = feedback_msg.feedback.distance_remaining
-                self.get_logger().info(
-                    f'Waypoint {waypoint_number}: {remaining:.2f} m remaining.'
-                )
-            except AttributeError:
-                pass
+            distance = feedback_msg.feedback.distance_remaining
+            self.get_logger().info(f'Waypoint 1: {distance:.2f} m remaining.')
             self.last_feedback_log = time.monotonic()
 
-    def on_nav_result(self, waypoint_number, future):
+    def on_nav_result(self, future):
         self.nav_goal_handle = None
         try:
             result = future.result()
         except Exception as exc:
-            self.get_logger().error(f'Waypoint {waypoint_number} navigation failed: {exc}')
+            self.get_logger().error(f'Nav2 failed: {exc}. Arm will NOT move.')
             self.state = 'IDLE'
             return
 
         if result is None or result.status != GoalStatus.STATUS_SUCCEEDED:
             status = result.status if result is not None else 'no result'
             self.get_logger().error(
-                f'Waypoint {waypoint_number} was not reached (status {status}). '
-                'Stopping the sequence.'
+                f'Waypoint 1 NOT reached (status {status}). Arm will NOT move.'
             )
             self.state = 'IDLE'
             return
 
-        self.get_logger().info(f'Waypoint {waypoint_number} reached successfully.')
-        if waypoint_number == 1:
-            self.start_arm()
-        else:
-            self.state = 'IDLE'
-            self.get_logger().info('Full sequence completed. Waiting for a new PLC trigger.')
+        self.get_logger().info('Waypoint 1 reached! Starting arm movement...')
+        self.start_arm()
 
     def start_arm(self):
-        self.get_logger().info('Starting hs_pick_place arm movement...')
+        # Launch your EXISTING hs_pick_place.py without calling rclpy.init()
+        # again inside this observer node.
         try:
             self.arm_process = subprocess.Popen(
                 ['ros2', 'run', 'hand_solo_arm', 'hs_pick_place']
             )
         except OSError as exc:
-            self.get_logger().error(f'Could not start the arm process: {exc}')
+            self.get_logger().error(f'Could not launch hs_pick_place: {exc}')
             self.state = 'IDLE'
             return
 
         self.state = 'ARM_RUNNING'
-        self.get_logger().info(f'Arm process running (PID {self.arm_process.pid}).')
+        self.get_logger().info(f'Arm process started (PID {self.arm_process.pid}).')
 
     def stop(self):
         if self.nav_goal_handle is not None:
