@@ -63,7 +63,11 @@ class HSWaypointRunner(Node):
     # --- script-style sequence (no arrays, no names) --------------------------
     def run(self):
         # Waypoint 1
-        if not self._send_and_wait([0.0, 0.7326, 1.3955, 0.0, 0.0, 0.0]): return
+        if not self._send_and_wait([0.785398, 1.0, 0.61, 0.0, 0.0, 0.0]): return
+        time.sleep(5.0)
+
+        # Waypoint 1
+        if not self._send_and_wait([-0.85398, 1.0, 0.61, 0.0, 0.0, 0.0]): return
         time.sleep(5.0)
 
         # Waypoint 2

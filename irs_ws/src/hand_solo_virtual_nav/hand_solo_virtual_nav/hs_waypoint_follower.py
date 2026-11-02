@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import math
 import time
-
+import subprocess
 import rclpy
 from rclpy.action import ActionClient
 from action_msgs.msg import GoalStatus
@@ -79,11 +79,27 @@ def main():
             node.get_logger().error(f'Goal failed (status {result.status}, '
                                     f'error code {result.result.error_code})')
             return False
-
+        
         node.get_logger().info('Goal reached successfully!')
         return True
 
     # --- Hard-coded waypoints for this lab. Edit this section in the code and make it your own ---
+    '''
+    
+    '''
+    subprocess.run(
+        ['ros2', 'run', 'hand_solo_arm', 'hs_pick_place'],
+        check=True
+    )
+    time.sleep(5)
+
+    # 5. Go to other waypoints and delays if you want
+    wp2 = make_pose(31.0, -4.0, 0.0)          # Sample goal pose. Make your own! You can create multiple way points
+    wait_seconds = 5.0       
+    send_and_wait(wp2)
+    node.get_logger().info(f'Waiting {wait_seconds:.0f} seconds at waypoint 2...')
+
+    time.sleep(5)
 
     wp1 = make_pose(0.0, 0.0, 0.0)          # Sample goal pose. Make your own! You can create multiple way points
     wait_seconds = 5.0                      # How long to wait at each waypoint
@@ -95,10 +111,7 @@ def main():
     node.get_logger().info(f'Waiting {wait_seconds:.0f} seconds at waypoint 1...')
 
     # Add some sort of delay functionality. Look up pythons time module
-
-    # 5. Go to other waypoints and delays if you want
-
-
+    time.sleep(5)
     # --- Your custom code ends here ---
 
     # 6. Shutdown node and ROS2
