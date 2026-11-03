@@ -13,13 +13,28 @@ from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from std_msgs.msg import String
+from moveit_msgs.action import MoveGroup
+from moveit_msgs.msg import MotionPlanRequest, Constraints, JointConstraint
+from typing import List
 
 
 
 
 class HSObserver(Node):
+
+    JOINT_NAMES: List[str] = ['joint_1','joint_2','joint_3','joint_4','joint_5','joint_6']
+    PLANNING_GROUP: str = 'tmr_arm'
+    ACTION_NAME: str = '/move_action' 
+    ARM_WAYPOINTS = [
+    [0.785398, 1.0, 0.61, 0.0, 0.0, 0.0],
+    [-0.85398, 1.0, 0.61, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.7326, 0.7326, 0.0, 0.0, 0.0]
+] 
+    
     def __init__(self):
         super().__init__('hs_observer')
+
 
         self.state = "IDLE"
         self.trigger_latched = False 
@@ -39,9 +54,16 @@ class HSObserver(Node):
         self.timer = self.create_timer(0.5, self.on_timer)
         self.get_logger().info("PLC Observer Started")
 
+        #initalisng the arm movement action sever  
+        self.client = ActionClient(self, MoveGroup, self.ACTION_NAME)
+        self.get_logger().info('Waiting for MoveGroup action server...')
+        self.client.wait_for_server()
+        self.get_logger().info('MoveGroup action server ready.')
+
+
     def listerner_callback(self,msg):
         try:
-            data = jason.load(msg.data)
+            data = json.loads(msg.data)
             box = data["box"]
             #check if the robot is idle 
             if not self.state == "IDLE" or self.trigger_latched:
@@ -75,15 +97,6 @@ class HSObserver(Node):
             else:
                 self.get_logger().info("Nav2 server is Not ready")
 
-
-        elif self.state == "ARM_RUNNING_Pickup":
-            #Runs the Arm for pickup 
-            if self.arm_process.poll() is not None:
-                self.get_logger().info("Arm movement finished")
-                self.arm_process = None
-                self.state = "Nav_to_shelf"
-
-
         elif self.state == "Nav_to_shelf":
             #sends robot to the shelf after pickup. 
             if self.nav_client.server_is_ready():
@@ -103,7 +116,7 @@ class HSObserver(Node):
         try:
             pose.pose.position.x = corodanates[0]
             pose.pose.position.y = corodanates[1]
-            halfyaw = corodanates[2]/2.0
+            half_yaw = corodanates[2]/2.0
             pose.pose.orientation.z = math.sin(half_yaw)
             pose.pose.orientation.w = math.cos(half_yaw)
 
@@ -126,6 +139,7 @@ class HSObserver(Node):
             if not handle.accepted:
                 self.get_logger().error("Nav2 rejected goal")
                 self.state = "IDLE"
+                return
             self.get_logger().info("Nav2 accepted goal")
             result = handle.get_result_async()
             result.add_done_callback(self.nav_result)
@@ -137,17 +151,65 @@ class HSObserver(Node):
         result = future.result()
         if result.status == GoalStatus.STATUS_SUCCEEDED:
             self.get_logger().info("Waypoint 1 reached")
-            #add in arm program 
+            if self.state =="Nav_to_shelf":
+                 if not self._send_and_wait(ARM_WAYPOINTS[3]):return
+                 if not self._send_and_wait(ARM_WAYPOINTS[2]):return 
+                 self.state = "IDLE"
+                 self.trigger_latched = False 
+
+            else:      
+                if not self._send_and_wait(ARM_WAYPOINTS[0]):return 
+                if not self._send_and_wait(ARM_WAYPOINTS[1]):return 
+                if not self._send_and_wait(ARM_WAYPOINTS[2]):return 
+                self.state = "Nav_to_shelf"
+
         else: 
             self.get_logger().error("Navigation failed")
             self.state = "IDLE"
 
+    def create_arm_goal(self ,joints: List[float])-> MoveGroup.Goal:
+        goal = MoveGroup.Goal()
+        req = MotionPlanRequest()
 
+        req.group_name = self.PLANNING_GROUP 
+        req.num_planning_attempts = 10
+        req.allowed_planning_time = 5.0
+        req.max_velocity_scaling_factor = 0.5
+        req.max_acceleration_scaling_factor = 0.5
+        cs = Constraints()
 
+        for name, val in zip(self.JOINT_NAMES, joints):
+                    jc = JointConstraint()
+                    jc.joint_name = name
+                    jc.position = val
+                    jc.tolerance_above = 0.01
+                    jc.tolerance_below = 0.01
+                    jc.weight = 1.0
+                    cs.joint_constraints.append(jc)
+        req.goal_constraints.append(cs)
+        goal.request = req
+        goal.planning_options.plan_only = False  # plan + execute
+        return goal
+
+    def _send_and_wait(self, joints: List[float]) -> bool:
+            goal = self._goal_from_joints(joints)
+            send_fut = self.client.send_goal_async(goal)
+            rclpy.spin_until_future_complete(self, send_fut)
+            handle = send_fut.result()
+            if not handle or not handle.accepted:
+                self.get_logger().error('Goal rejected.')
+                return False
+            res_fut = handle.get_result_async()
+            rclpy.spin_until_future_complete(self, res_fut)
+            res = res_fut.result()
+            return bool(res and res.status == 4)  # 4 = STATUS_SUCCEEDED
+
+        
+
+        
 
     def stop(self):
-        if self.arm_process is not None:
-            print("hello ")
+        pass
 
        
           
