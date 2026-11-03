@@ -96,7 +96,7 @@ def main():
         check=True
     )
 
-node.get_logger().info('Arm movement sequence completed!')
+    node.get_logger().info('Arm movement sequence completed!')
     time.sleep(5)
 
     # 5. Go to other waypoints and delays if you want
