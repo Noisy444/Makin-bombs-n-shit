@@ -133,7 +133,22 @@ class HSObserver(Node):
             self.get_logger().error(f'Failed to send Nav2 goal: {exc}')
             self.state = "IDLE"
 
+    def nav_result(self,future):
+        result = future.result()
+        if result.status == GoalStatus.STATUS_SUCCEEDED:
+            self.get_logger().info("Waypoint 1 reached")
+            #add in arm program 
+        else: 
+            self.get_logger().error("Navigation failed")
+            self.state = "IDLE"
+
     
+
+
+    def stop(self):
+        if self.arm_process is not None:
+            
+
        
           
 
