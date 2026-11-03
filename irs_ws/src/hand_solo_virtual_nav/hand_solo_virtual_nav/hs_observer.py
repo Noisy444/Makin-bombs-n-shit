@@ -142,12 +142,12 @@ class HSObserver(Node):
             self.get_logger().error("Navigation failed")
             self.state = "IDLE"
 
-    
+
 
 
     def stop(self):
         if self.arm_process is not None:
-            
+            print("hello ")
 
        
           
