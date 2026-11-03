@@ -139,6 +139,7 @@ class HSObserver(Node):
             if not handle.accepted:
                 self.get_logger().error("Nav2 rejected goal")
                 self.state = "IDLE"
+                self.trigger_latched = False
                 return
             self.get_logger().info("Nav2 accepted goal")
             result = handle.get_result_async()
@@ -152,20 +153,21 @@ class HSObserver(Node):
         if result.status == GoalStatus.STATUS_SUCCEEDED:
             self.get_logger().info("Waypoint 1 reached")
             if self.state =="Nav_to_shelf":
-                 if not self._send_and_wait(ARM_WAYPOINTS[3]):return
-                 if not self._send_and_wait(ARM_WAYPOINTS[2]):return 
+                 if not self._send_and_wait(self.ARM_WAYPOINTS[3]):return
+                 if not self._send_and_wait(self.ARM_WAYPOINTS[2]):return 
                  self.state = "IDLE"
                  self.trigger_latched = False 
 
             else:      
-                if not self._send_and_wait(ARM_WAYPOINTS[0]):return 
-                if not self._send_and_wait(ARM_WAYPOINTS[1]):return 
-                if not self._send_and_wait(ARM_WAYPOINTS[2]):return 
+                if not self._send_and_wait(self.ARM_WAYPOINTS[0]):return 
+                if not self._send_and_wait(self.ARM_WAYPOINTS[1]):return 
+                if not self._send_and_wait(self.ARM_WAYPOINTS[2]):return 
                 self.state = "Nav_to_shelf"
 
         else: 
             self.get_logger().error("Navigation failed")
             self.state = "IDLE"
+            self.trigger_latched = False 
 
     def create_arm_goal(self ,joints: List[float])-> MoveGroup.Goal:
         goal = MoveGroup.Goal()
@@ -192,7 +194,7 @@ class HSObserver(Node):
         return goal
 
     def _send_and_wait(self, joints: List[float]) -> bool:
-            goal = self._goal_from_joints(joints)
+            goal = self.create_arm_goal(joints)
             send_fut = self.client.send_goal_async(goal)
             rclpy.spin_until_future_complete(self, send_fut)
             handle = send_fut.result()
