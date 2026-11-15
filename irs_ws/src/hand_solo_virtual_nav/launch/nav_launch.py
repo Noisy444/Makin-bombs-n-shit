@@ -1,5 +1,6 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node, LifecycleNode
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 from launch.substitutions import PathJoinSubstitution
 from launch.actions import DeclareLaunchArgument
@@ -169,6 +170,20 @@ def generate_launch_description():
         ]
     )
 
+    # PLC-triggered supervisor: waypoint 1 -> arm -> waypoint 2
+    hs_observer = Node(
+        package='hand_solo_virtual_nav',
+        executable='hs_observer',
+        name='hs_observer',
+        output='screen',
+        parameters=[
+            {'use_sim_time': use_sim_time,
+             'waypoint_x': ParameterValue(LaunchConfiguration('waypoint_x'), value_type=float),
+             'waypoint_y': ParameterValue(LaunchConfiguration('waypoint_y'), value_type=float),
+             'waypoint_yaw': ParameterValue(LaunchConfiguration('waypoint_yaw'), value_type=float)}
+        ]
+    )
+
     # RViz2
     rviz = Node(
         package='rviz2',
@@ -182,6 +197,12 @@ def generate_launch_description():
     return LaunchDescription([
         # Launch arguments
         declare_use_sim_time,
+        DeclareLaunchArgument('waypoint_x', default_value='0.0',
+                              description='Pick-up waypoint X (map frame) - set to a free cell'),
+        DeclareLaunchArgument('waypoint_y', default_value='0.0',
+                              description='Pick-up waypoint Y (map frame) - set to a free cell'),
+        DeclareLaunchArgument('waypoint_yaw', default_value='0.0',
+                              description='Pick-up waypoint yaw (rad)'),
 
         # Localization Stack
         map_server,
@@ -196,6 +217,9 @@ def generate_launch_description():
         waypoint_follower,
         velocity_smoother,
         lifecycle_manager_navigation,
+
+        # Mission supervisor
+        hs_observer,
 
         # Visualization
         rviz

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Hand Solo supervisor: PLC location A -> waypoint 1 -> arm -> waypoint 2."""
 
 import json
