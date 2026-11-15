@@ -17,7 +17,11 @@ from moveit_msgs.msg import MotionPlanRequest, Constraints, JointConstraint
 from typing import List
 
 
-
+# The code has the uses a state macine of the robots current action to make decisions on what to do next. 
+# the states are IDLE, Box location, Move to conveyer, Pick Box, Move to Shelf, Place Box 
+# Triggerd latch is used to keep track of weather or not the robot has a box in hand. 
+# waypoints are stored as arrays of the locations with instead of individual values to make it easier to call and deal wiith in functions. 
+# the code is all self contained in this file all of the acosciated nodes are all active bu default in the simulation. 
 
 class HSObserver(Node):
 
@@ -67,7 +71,7 @@ class HSObserver(Node):
             #check if the robot is idle 
             if not self.state == "IDLE" or self.trigger_latched:
                 return 
-
+            #moves the robot to the belt based on the box location 
             if box["location"] == "A":
                 self.trigger_latched = True 
                 self.state = "WAITING_FOR_NAV2"
@@ -105,7 +109,7 @@ class HSObserver(Node):
 
 
     def send_waypoint(self,waypoint):
-
+        #sends the inputed waypoint to the nav2 stack to do path planning and execution 
         corodanates = waypoint
 
         pose = PoseStamped()
@@ -148,6 +152,7 @@ class HSObserver(Node):
             self.state = "IDLE"
 
     def nav_result(self,future):
+        #to check when the navagation is finished.
         result = future.result()
         if result.status == GoalStatus.STATUS_SUCCEEDED:
             self.get_logger().info("Waypoint 1 reached")
@@ -169,6 +174,8 @@ class HSObserver(Node):
             self.trigger_latched = False 
 
     def create_arm_goal(self ,joints: List[float])-> MoveGroup.Goal:
+        # creates the goal planning for the arm to move to a given positions 
+        # takes in information for the joint names and corespoding angles. 
         goal = MoveGroup.Goal()
         req = MotionPlanRequest()
 
@@ -193,6 +200,7 @@ class HSObserver(Node):
         return goal
 
     def _send_and_wait(self, joints: List[float]) -> bool:
+            # takes the input angles and sends it to the goal to do path planning then executues the goal. 
             goal = self.create_arm_goal(joints)
             send_fut = self.client.send_goal_async(goal)
             rclpy.spin_until_future_complete(self, send_fut)
